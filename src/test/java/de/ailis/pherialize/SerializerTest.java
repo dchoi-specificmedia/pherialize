@@ -23,10 +23,7 @@
 
 package de.ailis.pherialize;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
@@ -183,6 +180,9 @@ public class SerializerTest extends TestCase
             .valueOf((float) -10.100000381469727)));
         assertEquals("d:545.1591186523438;", Pherialize.serialize(Float
             .valueOf((float) 545.1591186523438)));
+
+        assertEquals("d:INF;", Pherialize.serialize(Float.POSITIVE_INFINITY));
+        assertEquals("d:-INF;", Pherialize.serialize(Float.NEGATIVE_INFINITY));
     }
 
 
@@ -415,5 +415,18 @@ public class SerializerTest extends TestCase
         s1 = "a:3:{i:0;O:11:\"CustomClass\":2:{s:5:\"value\";s:8:\"String 1\";s:7:\"strings\";a:0:{}}i:1;O:11:\"CustomClass\":2:{s:5:\"value\";s:8:\"String 2\";s:7:\"strings\";a:1:{i:0;s:1:\"a\";}}i:2;O:11:\"CustomClass\":2:{s:5:\"value\";s:8:\"String 3\";s:7:\"strings\";a:2:{i:0;s:1:\"a\";i:1;s:1:\"b\";}}}";
         s2 = Pherialize.serialize(array);
         assertEquals(s1, s2);
+    }
+
+    public void testSerializeSerializablePHPNS()
+    {
+        Person person;
+        Map<String, String> mapper = new HashMap<String, String>(1);
+        mapper.put("de.ailis.pherialize.Person", "De\\Ailis\\Pherialize\\Person");
+
+        person = new Person("Arthur Dent", 42, true, null);
+
+        assertEquals(
+                "O:26:\"De\\Ailis\\Pherialize\\Person\":4:{s:4:\"name\";s:11:\"Arthur Dent\";s:3:\"age\";i:42;s:9:\"earthling\";b:1;s:7:\"special\";N;}",
+                Pherialize.serialize(person, mapper));
     }
 }

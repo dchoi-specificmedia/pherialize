@@ -27,11 +27,7 @@ import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import de.ailis.pherialize.exceptions.SerializeException;
 
@@ -48,8 +44,20 @@ public class Serializer
     /** The original charset of the input data. */
     private final Charset charset;
 
+    /**
+     * Mapper
+     * Map Key should be Java class, and value should be the PHP FQCN
+     * null maps to short java class name
+     **/
+    private final Map<String, String> mapper;
+
     /** The object history for resolving references */
     private final List<Object> history;
+
+    static public Charset getDefaultCharset() {
+        return Charset.forName("UTF-8");
+    }
+
 
 
     /**
@@ -58,21 +66,22 @@ public class Serializer
 
     public Serializer()
     {
-        this(Charset.forName("UTF-8"));
+        this(getDefaultCharset(), null);
     }
-
 
     /**
      * Constructor
      */
 
-    public Serializer(Charset charset)
+    public Serializer(Charset charset, Map<String, String> mapper)
     {
         super();
+
         this.charset = charset;
+        this.mapper = mapper;
+
         this.history = new ArrayList<Object>();
     }
-
 
     /**
      * Serializes the specified object.
@@ -84,13 +93,12 @@ public class Serializer
 
     public String serialize(final Object object)
     {
-        StringBuffer buffer;
+        StringBuilder buffer;
 
-        buffer = new StringBuffer();
+        buffer = new StringBuilder();
         serializeObject(object, buffer);
         return buffer.toString();
     }
-
 
     /**
      * This method is used internally for recursively scanning the object while
@@ -103,11 +111,10 @@ public class Serializer
      *            The string buffer to append serialized data to
      */
 
-    private void serializeObject(final Object object, final StringBuffer buffer)
+    private void serializeObject(final Object object, final StringBuilder buffer)
     {
         serializeObject(object, buffer, true);
     }
-
 
     /**
      * This method is used internally for recursively scanning the object while
@@ -123,7 +130,7 @@ public class Serializer
      *            If reference is allowed for this object
      */
 
-    private void serializeObject(final Object object, final StringBuffer buffer,
+    private void serializeObject(final Object object, final StringBuilder buffer,
         final boolean allowReference)
     {
         if (object == null)
@@ -137,6 +144,10 @@ public class Serializer
         else if (object instanceof String)
         {
             serializeString((String) object, buffer);
+        }
+        else if (object instanceof char[])
+        {
+            serializeString(new String((char[]) object), buffer);
         }
         else if (object instanceof Character)
         {
@@ -217,7 +228,7 @@ public class Serializer
      * @return If a reference was serialized or not
      */
 
-    private boolean serializeReference(final Object object, final StringBuffer buffer)
+    private boolean serializeReference(final Object object, final StringBuilder buffer)
     {
         Iterator<?> iterator;
         int index;
@@ -261,7 +272,7 @@ public class Serializer
      *            The string buffer to append serialized data to
      */
 
-    private void serializeMixed(final Mixed mixed, final StringBuffer buffer)
+    private void serializeMixed(final Mixed mixed, final StringBuilder buffer)
     {
         serializeObject(mixed.getValue(), buffer);
     }
@@ -277,7 +288,7 @@ public class Serializer
      *            The string buffer to append serialized data to
      */
 
-    private void serializeString(final String string, final StringBuffer buffer)
+    private void serializeString(final String string, final StringBuilder buffer)
     {
         String decoded = Unserializer.decode(string, charset);
 
@@ -299,7 +310,7 @@ public class Serializer
      *            The string buffer to append serialized data to
      */
 
-    private void serializeCharacter(final Character value, final StringBuffer buffer)
+    private void serializeCharacter(final Character value, final StringBuilder buffer)
     {
         buffer.append("s:1:\"");
         buffer.append(value);
@@ -314,7 +325,7 @@ public class Serializer
      *            The string buffer to append serialized data to
      */
 
-    private void serializeNull(final StringBuffer buffer)
+    private void serializeNull(final StringBuilder buffer)
     {
         buffer.append("N;");
     }
@@ -330,7 +341,7 @@ public class Serializer
      *            The string buffer to append serialized data to
      */
 
-    private void serializeInteger(final int number, final StringBuffer buffer)
+    private void serializeInteger(final int number, final StringBuilder buffer)
     {
         buffer.append("i:");
         buffer.append(number);
@@ -348,7 +359,7 @@ public class Serializer
      *            The string buffer to append serialized data to
      */
 
-    private void serializeLong(final long number, final StringBuffer buffer)
+    private void serializeLong(final long number, final StringBuilder buffer)
     {
         if ((number >= Integer.MIN_VALUE) && (number <= Integer.MAX_VALUE))
         {
@@ -373,10 +384,20 @@ public class Serializer
      *            The string buffer to append serialized data to
      */
 
-    private void serializeDouble(final double number, final StringBuffer buffer)
+    private void serializeDouble(final double number, final StringBuilder buffer)
     {
         buffer.append("d:");
-        buffer.append(number);
+        if (Double.isNaN(number)) {
+            buffer.append("NAN");
+        } else if (Double.isInfinite(number)) {
+            if (number > 0) {
+                buffer.append("INF");
+            } else {
+                buffer.append("-INF");
+            }
+        } else {
+            buffer.append(number);
+        }
         buffer.append(';');
     }
 
@@ -391,7 +412,7 @@ public class Serializer
      *            The string buffer to append serialized data to
      */
 
-    private void serializeBoolean(final Boolean value, final StringBuffer buffer)
+    private void serializeBoolean(final Boolean value, final StringBuilder buffer)
     {
         buffer.append("b:");
         buffer.append(value.booleanValue() ? 1 : 0);
@@ -409,7 +430,7 @@ public class Serializer
      *            The string buffer to append serialized data to
      */
 
-    private void serializeCollection(final Collection<?> collection, final StringBuffer buffer)
+    private void serializeCollection(final Collection<?> collection, final StringBuilder buffer)
     {
         Iterator<?> iterator;
         int index;
@@ -441,7 +462,7 @@ public class Serializer
      *            The string buffer to append serialized data to
      */
 
-    private void serializeArray(final Object[] array, final StringBuffer buffer)
+    private void serializeArray(final Object[] array, final StringBuilder buffer)
     {
         int max;
 
@@ -469,7 +490,7 @@ public class Serializer
      *            The string buffer to append serialized data to
      */
 
-    private void serializeMap(final Map<?, ?> map, final StringBuffer buffer)
+    private void serializeMap(final Map<?, ?> map, final StringBuilder buffer)
     {
         Iterator<?> iterator;
         Object key;
@@ -499,7 +520,7 @@ public class Serializer
      *            The string buffer to append serialized data to
      */
 
-    private void serializeSerializable(final Serializable object, final StringBuffer buffer)
+    private void serializeSerializable(final Serializable object, final StringBuilder buffer)
     {
         String className;
         Class<?> c;
@@ -508,19 +529,19 @@ public class Serializer
         Field field;
         String key;
         Object value;
-        StringBuffer fieldBuffer;
+        StringBuilder fieldBuffer;
         int fieldCount;
 
         this.history.add(object);
         c = object.getClass();
-        className = c.getSimpleName();
+        className = this.getClassName(c);
         buffer.append("O:");
         buffer.append(className.length());
         buffer.append(":\"");
         buffer.append(className);
         buffer.append("\":");
 
-        fieldBuffer = new StringBuffer();
+        fieldBuffer = new StringBuilder();
         fieldCount = 0;
         while (c != null)
         {
@@ -560,5 +581,23 @@ public class Serializer
         buffer.append(":{");
         buffer.append(fieldBuffer);
         buffer.append("}");
+    }
+
+    /**
+     *  If there is a mapper, then Java/PHP FQCN
+     *  Otherwise Java simple class name
+     */
+    private String getClassName(Class<?> c) {
+        if (this.mapper == null) {
+            return c.getSimpleName();
+        }
+
+        String className = c.getName();
+
+        if (this.mapper.containsKey(className)) {
+            return this.mapper.get(className);
+        }
+
+        return className;
     }
 }

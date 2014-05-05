@@ -24,6 +24,8 @@
 package de.ailis.pherialize;
 
 import java.nio.charset.Charset;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 /**
@@ -46,6 +48,13 @@ public class Pherialize
         // Empty
     }
 
+    public static String serialize(final Object object, Charset charset, Map<String, String> map)
+    {
+        Serializer pherialize;
+
+        pherialize = new Serializer(charset, map);
+        return pherialize.serialize(object);
+    }
 
     /**
      * Returns the serialized representation of the specified object.
@@ -61,9 +70,19 @@ public class Pherialize
     {
         Serializer pherialize;
 
-        pherialize = new Serializer(charset);
+        pherialize = new Serializer(charset, null);
         return pherialize.serialize(object);
     }
+
+    public static String serialize(final Object object, Map<String, String> mapper)
+    {
+        Serializer pherialize;
+
+        pherialize = new Serializer(Serializer.getDefaultCharset(), mapper);
+        return pherialize.serialize(object);
+    }
+
+
 
 
     /**
